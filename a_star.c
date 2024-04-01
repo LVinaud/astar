@@ -4,10 +4,13 @@
 #include <stdbool.h>
 #include <SDL2/SDL.h>
 
+//para compilar use gcc a_star.c -o a_star $(sdl2-config --cflags --libs) -lSDL2 -lm
+//Para a parte gráfica, utilizei a biblioteca sdl2
+
 int origemX, destinoX, origemY, destinoY;
 
 #define SCREEN_LENGTH 640
-#define NUM_SQUARES 100
+#define NUM_SQUARES 80
 #define MOSTRA_PROCESSO 0
 #define SQUARE_SIZE (SCREEN_LENGTH/NUM_SQUARES)
 #define MAX_VALUE (99999999999)
@@ -347,6 +350,57 @@ int main(void) {
             switch (event.type)
                 {
                     case SDL_QUIT:
+                        FILE* arquivo_res = fopen("resolucao.bin", "wb");
+                        int resolucao = SCREEN_LENGTH;
+                        fwrite(&resolucao, sizeof(int), 1, arquivo_res);
+                        fclose(arquivo_res);
+                        FILE* arquivo_ini = fopen("origem.bin", "wb");
+                        fwrite(&origemX, sizeof(int), 1, arquivo_ini);
+                        fwrite(&origemY, sizeof(int), 1, arquivo_ini);
+                        fclose(arquivo_ini);
+                        //ve quantos obstaculos haviam
+                        int num_obstaculos = 0;
+                        for(int i = 0; i < NUM_SQUARES; i++) {
+                            for(int j = 0; j < NUM_SQUARES; j++) {
+                                if(grid[i][j]->peso == PESO_OBSTACULO)
+                                    num_obstaculos++;
+                            }
+                        }
+                        FILE* arquivo_obs = fopen("obstaculos.bin", "wb");
+                        fwrite(&num_obstaculos, sizeof(int), 1, arquivo_obs);
+                        //agora escreve cada um deles
+                        for(int i = 0; i < NUM_SQUARES; i++) {
+                            for(int j = 0; j < NUM_SQUARES; j++) {
+                                if(grid[i][j]->peso == PESO_OBSTACULO) {
+                                    SDL_Rect novo;
+                                    novo.h = SCREEN_LENGTH / NUM_SQUARES;
+                                    novo.w = SCREEN_LENGTH / NUM_SQUARES;
+                                    novo.x = IJparaXY(j) - ((SCREEN_LENGTH / NUM_SQUARES)/2);
+                                    novo.y = IJparaXY(i) - ((SCREEN_LENGTH / NUM_SQUARES)/2);
+                                    fwrite(&novo, sizeof(SDL_Rect), 1, arquivo_obs);
+                                }
+                            }
+                        }
+                        fclose(arquivo_obs);
+
+                        FILE* arquivo_dest = fopen("destinos.bin", "wb");
+                        ITEM* aux = resposta; //so pra percorrer o caminho resposta e ver quantos objetivos há
+                        int num_destinos = 0;
+                        while(aux->pai != NULL) {
+                            num_destinos++;
+                            aux = aux->pai;
+                        }
+                        fwrite(&num_destinos, sizeof(int), 1, arquivo_dest);
+                        aux = resposta; 
+                        while(aux->pai != NULL) {
+                            SDL_Point novo;
+                            novo.x = aux->x;
+                            novo.y = aux->y;
+                            fwrite(&novo, sizeof(SDL_Point), 1, arquivo_dest);
+                            aux = aux->pai;
+                        }
+                        fclose(arquivo_dest);
+                        system("./braco");
                         FILA_apagar(&fila);
                         for(int i = 0; i < NUM_SQUARES; i++)
                             for(int j = 0; j < NUM_SQUARES; j++) 
